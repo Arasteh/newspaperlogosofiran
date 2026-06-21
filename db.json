@@ -1,0 +1,14 @@
+[
+  {
+    name: "شکوفه",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Shokufeh.svg/1280px-Logo_of_Shokufeh.svg.png",
+    fallbackLogo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_of_Shokufeh.svg/1280px-Logo_of_Shokufeh.svg.png",
+    wikidataId: "Q5883331",
+    startYear: "۱۳۳۱",
+    endYear: "۱۳۳۷",
+    managingDirector: "مریم عمید",
+    editorInChief: "",
+    subjects: ["زنان"],
+    place: "تهران"
+  }
+]
