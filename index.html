@@ -1,0 +1,409 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Filter, X, ExternalLink, MapPin, Calendar, User, Users, BookOpen, ImageIcon, Loader2 } from 'lucide-react';
+
+// دیتای پیش‌فرض نشریات قاجار (در صورت عدم دسترسی به db.json استفاده می‌شود)
+const fallbackDatabase = [
+  {
+    name: "وقایع اتفاقیه",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/7/77/Vaghaye_Ettefaghiyeh.jpg",
+    fallbackLogo: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Vaghaye_Ettefaghiyeh.jpg/512px-Vaghaye_Ettefaghiyeh.jpg",
+    wikidataId: "Q4115438",
+    startYear: "۱۲۶۷",
+    endYear: "۱۲۷۷",
+    managingDirector: "امیرکبیر",
+    editorInChief: "حاجی میرزا جبار ناظم‌المهام",
+    subjects: ["حکومتی", "خبری", "عمومی"],
+    place: "تهران"
+  },
+  {
+    name: "صور اسرافیل",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/d/de/Sur-e_Esrafil_Newspaper_Logo.jpg",
+    fallbackLogo: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Sur-e_Esrafil_Newspaper_Logo.jpg/512px-Sur-e_Esrafil_Newspaper_Logo.jpg",
+    wikidataId: "Q7645281",
+    startYear: "۱۳۲۵",
+    endYear: "۱۳۲۶",
+    managingDirector: "جهانگیرخان صور اسرافیل",
+    editorInChief: "علی‌اکبر دهخدا",
+    subjects: ["مشروطه‌خواه", "سیاسی", "طنز"],
+    place: "تهران"
+  },
+  {
+    name: "اختر",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/0/07/Akhtar_Newspaper.jpg",
+    fallbackLogo: "https://upload.wikimedia.org/wikipedia/commons/0/07/Akhtar_Newspaper.jpg",
+    wikidataId: "Q17042503",
+    startYear: "۱۲۹۳",
+    endYear: "۱۳۱۴",
+    managingDirector: "محمدطاهر تبریزی",
+    editorInChief: "میرزا مهدی تبریزی",
+    subjects: ["برون‌مرزی", "اجتماعی", "سیاسی"],
+    place: "استانبول"
+  },
+  {
+    name: "شرف",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/4/4c/Sharaf_Newspaper.jpg",
+    fallbackLogo: "https://upload.wikimedia.org/wikipedia/commons/4/4c/Sharaf_Newspaper.jpg",
+    wikidataId: "Q17013840",
+    startYear: "۱۳۰۰",
+    endYear: "۱۳۰۹",
+    managingDirector: "محمدحسن‌خان اعتمادالسلطنه",
+    editorInChief: "محمدحسن‌خان اعتمادالسلطنه",
+    subjects: ["مصور", "زندگی‌نامه", "درباری"],
+    place: "تهران"
+  },
+  {
+    name: "حبل‌المتین",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/9/91/Habl_al-Matin_Newspaper.jpg",
+    fallbackLogo: "https://upload.wikimedia.org/wikipedia/commons/9/91/Habl_al-Matin_Newspaper.jpg",
+    wikidataId: "Q17011985",
+    startYear: "۱۳۱۱",
+    endYear: "۱۳۴۹",
+    managingDirector: "سید جلال‌الدین کاشانی",
+    editorInChief: "سید جلال‌الدین کاشانی",
+    subjects: ["سیاسی", "پان‌اسلامیسم", "خبری"],
+    place: "کلکته"
+  },
+  {
+    name: "قانون",
+    logoUrl: "https://upload.wikimedia.org/wikipedia/commons/3/3d/Qanun_Newspaper_London.jpg",
+    fallbackLogo: "https://upload.wikimedia.org/wikipedia/commons/3/3d/Qanun_Newspaper_London.jpg",
+    wikidataId: "Q17011933",
+    startYear: "۱۳۰۷",
+    endYear: "۱۳۰۸",
+    managingDirector: "میرزا ملکم‌خان",
+    editorInChief: "میرزا ملکم‌خان",
+    subjects: ["انتقادی", "سیاسی", "توسعه‌گرا"],
+    place: "لندن"
+  }
+];
+
+export default function App() {
+  const [newspaperDatabase, setNewspaperDatabase] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedPlace, setSelectedPlace] = useState("");
+  const [selectedNewspaper, setSelectedNewspaper] = useState(null);
+
+  // فراخوانی دیتابیس از فایل خارجی db.json
+  useEffect(() => {
+    setIsLoading(true);
+    fetch('/db.json') // مسیر فرضی فایل جیسون شما
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('فایل دیتابیس پیدا نشد.');
+        }
+        return response.json();
+      })
+      .then(data => {
+        setNewspaperDatabase(data);
+      })
+      .catch(error => {
+        console.warn('دسترسی به db.json ممکن نبود. استفاده از دیتای پیش‌فرض.', error);
+        setNewspaperDatabase(fallbackDatabase);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
+
+  // استخراج لیست موضوعات و شهرهای یکتا برای فیلترها
+  const uniqueSubjects = useMemo(() => {
+    const allSubjects = newspaperDatabase.flatMap(db => db.subjects || []);
+    return [...new Set(allSubjects)].sort();
+  }, [newspaperDatabase]);
+
+  const uniquePlaces = useMemo(() => {
+    const allPlaces = newspaperDatabase.map(db => db.place).filter(Boolean);
+    return [...new Set(allPlaces)].sort();
+  }, [newspaperDatabase]);
+
+  // اعمال جستجو و فیلترها به صورت در لحظه
+  const filteredNewspapers = useMemo(() => {
+    return newspaperDatabase.filter(paper => {
+      const matchSearch = paper.name.includes(searchQuery);
+      const matchSubject = selectedSubject ? paper.subjects?.includes(selectedSubject) : true;
+      const matchPlace = selectedPlace ? paper.place === selectedPlace : true;
+      
+      return matchSearch && matchSubject && matchPlace;
+    });
+  }, [searchQuery, selectedSubject, selectedPlace, newspaperDatabase]);
+
+  return (
+    <div dir="rtl" className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-200 selection:bg-indigo-200 selection:text-indigo-900 dark:selection:bg-indigo-900 dark:selection:text-indigo-100 transition-colors duration-200" style={{ fontFamily: 'Vazirmatn, Tahoma, sans-serif' }}>
+      
+      {/* هدر سایت */}
+      <header className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 transition-colors duration-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-reverse space-x-3">
+            <div className="bg-indigo-600 dark:bg-indigo-500 text-white p-2 rounded-lg">
+              <BookOpen size={24} />
+            </div>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white">آرشیو لوگوی مطبوعات قاجار</h1>
+          </div>
+          <div className="text-sm text-slate-500 dark:text-slate-400 hidden sm:block">
+            {isLoading ? "در حال بارگذاری..." : `${filteredNewspapers.length} نشریه پیدا شد`}
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* نوار جستجو و فیلترها */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 md:p-6 mb-8 transition-colors duration-200">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            
+            {/* جستجو */}
+            <div className="md:col-span-6 relative">
+              <label htmlFor="search" className="sr-only">جستجو در نام روزنامه‌ها</label>
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+              </div>
+              <input
+                type="text"
+                id="search"
+                disabled={isLoading}
+                className="block w-full pr-10 pl-3 py-3 border border-slate-300 dark:border-slate-600 rounded-xl leading-5 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out sm:text-sm disabled:opacity-50"
+                placeholder="جستجوی نام روزنامه..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* فیلتر موضوع */}
+            <div className="md:col-span-3 relative">
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <Filter className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+              </div>
+              <select
+                disabled={isLoading}
+                className="block w-full pr-10 pl-3 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none cursor-pointer disabled:opacity-50"
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+              >
+                <option value="">همه موضوعات</option>
+                {uniqueSubjects.map(subject => (
+                  <option key={subject} value={subject}>{subject}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* فیلتر محل انتشار */}
+            <div className="md:col-span-3 relative">
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <MapPin className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+              </div>
+              <select
+                disabled={isLoading}
+                className="block w-full pr-10 pl-3 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none cursor-pointer disabled:opacity-50"
+                value={selectedPlace}
+                onChange={(e) => setSelectedPlace(e.target.value)}
+              >
+                <option value="">همه شهرها</option>
+                {uniquePlaces.map(place => (
+                  <option key={place} value={place}>{place}</option>
+                ))}
+              </select>
+            </div>
+
+          </div>
+        </div>
+
+        {/* وضعیت لودینگ */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-slate-400">
+            <Loader2 className="w-10 h-10 animate-spin mb-4 text-indigo-500" />
+            <p>در حال دریافت اطلاعات از دیتابیس...</p>
+          </div>
+        ) : 
+        /* گالری لوگوها */
+        filteredNewspapers.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredNewspapers.map((paper) => (
+              <div 
+                key={paper.wikidataId} 
+                onClick={() => setSelectedNewspaper(paper)}
+                className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-xl dark:hover:shadow-indigo-900/20 transition-all duration-300 cursor-pointer group flex flex-col"
+              >
+                <div className="h-48 bg-slate-100 dark:bg-slate-900 p-6 flex items-center justify-center relative border-b border-slate-100 dark:border-slate-700 group-hover:bg-indigo-50/50 dark:group-hover:bg-indigo-900/20 transition-colors">
+                  <ImageWithFallback 
+                    src={paper.logoUrl} 
+                    fallbackSrc={paper.fallbackLogo} 
+                    alt={`لوگو ${paper.name}`} 
+                    className="max-h-full max-w-full object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300 dark:brightness-90 dark:contrast-125 mix-blend-multiply dark:mix-blend-normal"
+                  />
+                  <div className="absolute top-3 right-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur px-2 py-1 rounded text-xs font-medium text-slate-700 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-600">
+                    {paper.startYear} هـ.ق
+                  </div>
+                </div>
+                
+                <div className="p-5 flex-grow flex flex-col">
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{paper.name}</h3>
+                  
+                  <div className="flex items-center text-slate-500 dark:text-slate-400 text-sm mb-4 space-x-reverse space-x-1">
+                    <MapPin size={14} />
+                    <span>{paper.place}</span>
+                  </div>
+
+                  <div className="mt-auto flex flex-wrap gap-2">
+                    {paper.subjects?.slice(0, 2).map((sub, i) => (
+                      <span key={i} className="inline-block px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs rounded-md font-medium border border-indigo-100/50 dark:border-indigo-800">
+                        {sub}
+                      </span>
+                    ))}
+                    {paper.subjects?.length > 2 && (
+                      <span className="inline-block px-2.5 py-1 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-xs rounded-md font-medium border border-slate-200 dark:border-slate-600">
+                        +{paper.subjects.length - 2}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 border-dashed">
+            <Search className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white">نتیجه‌ای یافت نشد</h3>
+            <p className="mt-1 text-slate-500 dark:text-slate-400">با تغییر فیلترها یا عبارت جستجو مجدداً تلاش کنید.</p>
+            <button 
+              onClick={() => { setSearchQuery(""); setSelectedPlace(""); setSelectedSubject(""); }}
+              className="mt-4 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-lg text-sm font-medium hover:bg-indigo-100 dark:hover:bg-indigo-800 transition-colors"
+            >
+              پاک کردن همه فیلترها
+            </button>
+          </div>
+        )}
+
+      </main>
+
+      {/* مدال نمایش اطلاعات کامل (Modal) */}
+      {selectedNewspaper && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
+            onClick={() => setSelectedNewspaper(null)}
+          ></div>
+          
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh] transition-colors duration-200 border border-slate-200 dark:border-slate-700">
+            <button 
+              onClick={() => setSelectedNewspaper(null)}
+              className="absolute top-4 right-4 p-2 bg-white/50 dark:bg-slate-900/50 backdrop-blur rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors z-10"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="h-64 bg-slate-100/80 dark:bg-slate-900 p-8 flex items-center justify-center relative pattern-grid-lg border-b border-slate-200 dark:border-slate-700">
+              <ImageWithFallback 
+                src={selectedNewspaper.logoUrl} 
+                fallbackSrc={selectedNewspaper.fallbackLogo} 
+                alt={`لوگو ${selectedNewspaper.name}`} 
+                className="max-h-full max-w-full object-contain drop-shadow-md dark:brightness-90 dark:contrast-125 mix-blend-multiply dark:mix-blend-normal"
+              />
+            </div>
+
+            <div className="p-6 md:p-8 overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">{selectedNewspaper.name}</h2>
+                <a 
+                  href={`https://www.wikidata.org/wiki/${selectedNewspaper.wikidataId}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <span className="ml-1.5">آیتم ویکی‌داده</span>
+                  <ExternalLink size={16} />
+                </a>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-start">
+                    <Calendar className="text-slate-400 dark:text-slate-500 ml-3 mt-1" size={20} />
+                    <div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">دوره انتشار (قمری)</p>
+                      <p className="font-medium text-slate-900 dark:text-slate-200">از {selectedNewspaper.startYear} تا {selectedNewspaper.endYear}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start">
+                    <MapPin className="text-slate-400 dark:text-slate-500 ml-3 mt-1" size={20} />
+                    <div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">محل انتشار</p>
+                      <p className="font-medium text-slate-900 dark:text-slate-200">{selectedNewspaper.place}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-start">
+                    <User className="text-slate-400 dark:text-slate-500 ml-3 mt-1" size={20} />
+                    <div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">مدیر مسئول</p>
+                      <p className="font-medium text-slate-900 dark:text-slate-200">{selectedNewspaper.managingDirector || 'نامشخص'}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start">
+                    <Users className="text-slate-400 dark:text-slate-500 ml-3 mt-1" size={20} />
+                    <div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">سردبیر</p>
+                      <p className="font-medium text-slate-900 dark:text-slate-200">{selectedNewspaper.editorInChief || 'نامشخص'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700">
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">موضوعات فعالیت</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedNewspaper.subjects?.map((sub, i) => (
+                    <span key={i} className="inline-block px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg font-medium">
+                      {sub}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+// کامپوننت کمکی برای لود کردن تصاویر
+function ImageWithFallback({ src, fallbackSrc, alt, className }) {
+  const [imgSrc, setImgSrc] = useState(src);
+  const [hasError, setHasError] = useState(false);
+
+  const handleError = () => {
+    if (imgSrc === src && fallbackSrc) {
+      setImgSrc(fallbackSrc);
+    } else {
+      setHasError(true);
+    }
+  };
+
+  if (hasError) {
+    return (
+      <div className={`flex flex-col items-center justify-center text-slate-300 dark:text-slate-600 ${className}`}>
+        <ImageIcon size={48} className="mb-2 opacity-50" />
+        <span className="text-xs font-medium">تصویر در دسترس نیست</span>
+      </div>
+    );
+  }
+
+  return <img src={imgSrc} alt={alt} className={className} onError={handleError} loading="lazy" />;
+}
